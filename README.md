@@ -6,7 +6,7 @@ This repository includes the implmentation of $\rho$-stepping, $\Delta$\*-steppi
 ## Developing 
 
 ### Prerequisites 
-* clang++ from the OpenSilk project (link)[https://www.opencilk.org/doc/users-guide/install/]'
+* clang++ from the OpenSilk project [https://www.opencilk.org/doc/users-guide/install](link)
 
 ### Setting up 
 Clone the library with submodule 
