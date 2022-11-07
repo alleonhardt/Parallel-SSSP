@@ -1,10 +1,10 @@
-CXXFLAGS = -O3 -mcx16 -march=native -std=c++17 -Wall -Wextra -fopencilk -DCILK
+CXXFLAGS = -O3 -mcx16 -march=native -std=c++17 -Wall -Wextra -fopencilk -DCILK -lsqlite3
 
 all: sssp
 .PHONY: gen run clean
 
-sssp:	sssp.cc sssp.h dijkstra.hpp graph.hpp
-	$(CC) $(CXXFLAGS) sssp.cc -o sssp
+sssp:	src/sssp.cc src/sssp.h src/dijkstra.hpp src/graph.hpp src/metrics/metrics.hpp src/metrics/metrics.cpp
+	$(CC) $(CXXFLAGS) src/sssp.cc src/metrics/metrics.cpp -o sssp
 
 clean:
 	rm sssp

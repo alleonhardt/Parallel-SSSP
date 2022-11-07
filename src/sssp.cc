@@ -8,6 +8,15 @@
 using namespace std;
 using namespace pbbs;
 
+// Taken from: https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
+// All credit belongs to Joseph and tshepang
+inline bool ends_with(std::string const & value, std::string const & ending)
+{
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+
 void SSSP::degree_sampling(size_t sz) {
   static uint32_t seed = 353442899;
   for (size_t i = 0; i < SSSP_SAMPLES; i++) {
@@ -56,14 +65,22 @@ void SSSP::relax(size_t sz) {
     }
     int pt = 1;
     auto add = [&](NodeId u) {
+      // This is a gate, only add the node once! At least one node wins the "race"
       if ((info[u].fl & to_add) ||
           !atomic_compare_and_swap(&info[u].fl, info[u].fl,
                                    info[u].fl | to_add)) {
         return;
       }
+      if(metrics) {
+        metrics->log_node_add(u);
+      }
+      
+      
       int t_pt = pt;
       size_t pos =
           hash32(u) % (qsize[t_pt] - qsize[t_pt - 1]) + qsize[t_pt - 1];
+      // Find our position in the queue while competing with threads inserting
+      // an element with a similiar hash
       while (que[nxt][pos] != UINT_MAX ||
              !atomic_compare_and_swap(&que[nxt][pos], UINT_MAX, u)) {
         pos++;
@@ -126,6 +143,7 @@ void SSSP::relax(size_t sz) {
     }
     parallel_for(0, sz, [&](size_t i) {
       NodeId f = que[cur][i];
+        
       que[cur][i] = UINT_MAX;
       if (info[f].dist > th) {
         add(f);
@@ -318,15 +336,21 @@ void SSSP::sssp(int s, EdgeTy *_dist) {
   que[cur][0] = s;
   info[s].dist = 0;
   sparse = true;
+  if(metrics) {
+    metrics->log_node_add(s);
+  }
+  
 
   while (sz) {
     relax(sz);
     sz = pack();
+    metrics->getCurrentTotalCount();
     if (sz >= G.n / sd_scale) {
       sparse = false;
     } else {
       sparse = true;
     };
+    metrics->incAlgorithmStep();
   }
   t_all.stop();
   parallel_for(0, G.n, [&](size_t i) { _dist[i] = info[i].dist; });
@@ -336,14 +360,17 @@ int main(int argc, char *argv[]) {
   if (argc == 1) {
     fprintf(
         stderr,
-        "Usage: %s [-i input_file] [-p parameter] [-w] [-s] [-v] [-a "
+        "Usage: %s [-i input_file] [-p parameter] [-m metrics_file] [-w] [-s] [-v] [-a "
         "algorithm]\n"
         "Options:\n"
         "\t-i,\tinput file path\n"
+        "\t-m,\tmetrics file path\n"
         "\t-p,\tparameter(e.g. delta, rho)\n"
         "\t-w,\tweighted input graph\n"
         "\t-s,\tsymmetrized input graph\n"
         "\t-v,\tverify result\n"
+        "\t-r,\tnum rounds per source vertex\n"
+        "\t-n,\tnum source vertices per graph\n"
         "\t-a,\talgorithm: [rho-stepping] [delta-stepping] [bellman-ford]\n",
         argv[0]);
     exit(EXIT_FAILURE);
@@ -352,9 +379,14 @@ int main(int argc, char *argv[]) {
   bool weighted = false;
   bool symmetrized = false;
   bool verify = false;
+  const char *METRICS_PATH = nullptr;
+  int NUM_SOURCES = 0;
+  int NUM_ROUNDS = 0;
+
   size_t param = 1 << 21;
   Algorithm algo = rho_stepping;
-  while ((c = getopt(argc, argv, "i:p:a:wsv")) != -1) {
+  const char *ALGORITHM = nullptr;
+  while ((c = getopt(argc, argv, "i:p:a:n:r:m:wsv")) != -1) {
     switch (c) {
       case 'i':
         FILEPATH = optarg;
@@ -362,13 +394,22 @@ int main(int argc, char *argv[]) {
       case 'p':
         param = atol(optarg);
         break;
+      case 'n':
+        NUM_SOURCES = atol(optarg);
+        break;
+      case 'r':
+        NUM_ROUNDS = atol(optarg);
+        break;
       case 'a':
         if (!strcmp(optarg, "rho-stepping")) {
           algo = rho_stepping;
+          ALGORITHM = optarg;
         } else if (!strcmp(optarg, "delta-stepping")) {
           algo = delta_stepping;
+          ALGORITHM = optarg;
         } else if (!strcmp(optarg, "bellman-ford")) {
           algo = bellman_ford;
+          ALGORITHM = optarg;
         } else {
           fprintf(stderr, "Error: Unknown algorithm %s\n", optarg);
           exit(EXIT_FAILURE);
@@ -382,6 +423,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'v':
         verify = true;
+        break;
+      case 'm':
+        METRICS_PATH = optarg;
         break;
       default:
         fprintf(stderr, "Error: Unknown option %c\n", optopt);
@@ -397,44 +441,66 @@ int main(int argc, char *argv[]) {
     G.generate_weight();
   }
 
-  SSSP solver(G, algo, param);
+  SSSPMetrics *metrics_ptr = nullptr;
+  if(METRICS_PATH) {
+    std::string filename = FILEPATH;
+    if(ends_with(filename, ".adj")) {
+      std::ifstream inputGraph(filename);
+      std::stringstream buffer;
+      buffer << inputGraph.rdbuf();
+      metrics_ptr = new SSSPMetrics(METRICS_PATH, buffer.str(), ALGORITHM, param);
+    }
+    else {
+      std::cerr<<"Only adj files are supported for now. Aborting..."<<std::endl;
+      std::exit(-1);
+    }
+  }
+
+  SSSP solver(G, algo, metrics_ptr, param);
   int sd_scale = G.m / G.n;
   solver.set_sd_scale(sd_scale);
-  fprintf(stdout,
-          "Running on %s: |V|=%zu, |E|=%zu, param=%zu, num_src=%d, "
+  printf("Running on %s: |V|=%zu, |E|=%zu, param=%zu, num_src=%d, "
           "num_round=%d\n",
-          FILEPATH, G.n, G.m, param, NUM_SRC, NUM_ROUND);
+          FILEPATH, G.n, G.m, param, NUM_SOURCES, NUM_ROUNDS);
   EdgeTy *dijkstra_dist = new EdgeTy[G.n];
   EdgeTy *my_dist = new EdgeTy[G.n];
 
-  for (int v = 0; v < NUM_SRC; v++) {
+  for (int v = 0; v < NUM_SOURCES; v++) {
     int s = hash32(v) % G.n;
-    printf("source: %-10d\n", s);
+    //printf("Source: %d; Iteration: %d/%d\n", s,v+1,NUM_SOURCES);
     vector<double> sssp_time;
     // first time warmup
     solver.reset_timer();
     solver.sssp(s, my_dist);
-    printf("warmup round (not counted): %f\n", solver.t_all.get_total());
+    //printf("warmup round (not counted): %f\n", solver.t_all.get_total());
+    solver.metrics->reset_round();
 
-    for (int i = 0; i < NUM_ROUND; i++) {
+    for (int i = 0; i < NUM_ROUNDS; i++) {
       solver.reset_timer();
       solver.sssp(s, my_dist);
       sssp_time.push_back(solver.t_all.get_total());
+      solver.metrics->reset_round(s);
 
-      printf("round %d: %f\n", i + 1, solver.t_all.get_total());
+      printf("Source %d; Iteration %d/%d: Round %d/%d: %fs                                 \r",s,v+1,NUM_SOURCES, i + 1, NUM_ROUNDS, solver.t_all.get_total());
+      fflush(stdout);
     }
     sort(begin(sssp_time), end(sssp_time));
-    printf("median running time: %f\n", sssp_time[(sssp_time.size() - 1) / 2]);
-    printf("average running time: %f\n",
-           accumulate(begin(sssp_time), end(sssp_time), 0.0) / NUM_ROUND);
+    //printf("median running time: %f\n", sssp_time[(sssp_time.size() - 1) / 2]);
+    //printf("average running time: %f\n",
+    //       accumulate(begin(sssp_time), end(sssp_time), 0.0) / NUM_ROUNDS);
 
     if (verify) {
       printf("Info: Running verifier\n");
       verifier(s, G, my_dist);
     }
   }
+  printf("\n");
   delete[] dijkstra_dist;
   delete[] my_dist;
+  if(metrics_ptr) {
+    delete metrics_ptr;
+    metrics_ptr = nullptr;
+  }
 
   return 0;
 }

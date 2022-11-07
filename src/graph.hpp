@@ -12,8 +12,8 @@
 #include <string>
 #include <vector>
 
-#include "pbbslib/sequence.h"
-#include "pbbslib/utilities.h"
+#include "../pbbslib/sequence.h"
+#include "../pbbslib/utilities.h"
 using namespace std;
 using namespace pbbs;
 

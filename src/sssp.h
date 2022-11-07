@@ -1,15 +1,14 @@
 #pragma once
 #include "graph.hpp"
-#include "pbbslib/get_time.h"
-#include "pbbslib/parallel.h"
-#include "pbbslib/sequence.h"
-#include "pbbslib/utilities.h"
+#include "../pbbslib/get_time.h"
+#include "../pbbslib/parallel.h"
+#include "../pbbslib/sequence.h"
+#include "../pbbslib/utilities.h"
+#include "metrics/metrics.hpp"
 using namespace std;
 using namespace pbbs;
 
 char const *FILEPATH = nullptr;
-constexpr int NUM_SRC = 1000;
-constexpr int NUM_ROUND = 10;
 constexpr uint32_t in_que = 1;
 constexpr uint32_t to_add = 2;
 
@@ -46,6 +45,7 @@ class SSSP {
   sequence<NodeId> que[2];
   sequence<NodeId> que_num;
 
+
   void degree_sampling(size_t sz);
   void sparse_sampling(size_t sz);
   size_t dense_sampling();
@@ -54,8 +54,8 @@ class SSSP {
 
  public:
   SSSP() = delete;
-  SSSP(const Graph &_G, Algorithm _algo, size_t _param = 1 << 21)
-      : G(_G), algo(_algo), param(_param) {
+  SSSP(const Graph &_G, Algorithm _algo, SSSPMetrics *_mets, size_t _param = 1 << 21)
+      : G(_G), algo(_algo), param(_param), metrics(_mets) {
     max_queue = 1ULL << static_cast<int>(ceil(log2(G.n)));
     doubling = ceil(log2(max_queue / MIN_QUEUE)) + 1;
     info = sequence<Information>(G.n);
@@ -66,4 +66,5 @@ class SSSP {
   void reset_timer();
   void set_sd_scale(int x) { sd_scale = x; }
   timer t_all;
+  SSSPMetrics *metrics;
 };
