@@ -63,6 +63,7 @@ void SSSP::relax(size_t sz) {
       cnt[db_len] = 0;
       db_len++;
     }
+
     int pt = 1;
     auto add = [&](NodeId u) {
       // This is a gate, only add the node once! At least one node wins the "race"
@@ -81,8 +82,14 @@ void SSSP::relax(size_t sz) {
           hash32(u) % (qsize[t_pt] - qsize[t_pt - 1]) + qsize[t_pt - 1];
       // Find our position in the queue while competing with threads inserting
       // an element with a similiar hash
+      if(pos > 1000000) {
+        printf("Too large! %d %d %d\n",qsize[t_pt],qsize[t_pt - 1], t_pt);
+      }
       while (que[nxt][pos] != UINT_MAX ||
              !atomic_compare_and_swap(&que[nxt][pos], UINT_MAX, u)) {
+        if(pos > 1000000) {
+          printf("Too large!");
+        }
         pos++;
         if (pos == qsize[t_pt]) {
           pos = qsize[t_pt - 1];
