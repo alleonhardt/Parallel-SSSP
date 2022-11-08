@@ -38,7 +38,9 @@ Options:
 * -w weighted input graph 
 * -s symmetrized input graph 
 * -v verify result 
-* -a algorithm: [rho-stepping] [delta-stepping] [bellman-ford] 
+* -a algorithm: [rho-stepping] [delta-stepping] [bellman-ford]
+* -r number of rounds per source
+* -n number of different sources per graph
 
 For example, if you want to run $\rho$-stepping on a symmetrized weighted graph INPUT_NAME, set
 $\rho$=2000000, and use Dijkstra's algorithm to verify the result after the test, you can run: 
