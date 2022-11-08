@@ -380,8 +380,8 @@ int main(int argc, char *argv[]) {
   bool symmetrized = false;
   bool verify = false;
   const char *METRICS_PATH = nullptr;
-  int NUM_SOURCES = 0;
-  int NUM_ROUNDS = 0;
+  int NUM_SOURCES = 1000;
+  int NUM_ROUNDS = 10;
 
   size_t param = 1 << 21;
   Algorithm algo = rho_stepping;
