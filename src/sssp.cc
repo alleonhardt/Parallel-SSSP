@@ -455,7 +455,7 @@ int main(int argc, char *argv[]) {
       METRICS_PATH = METRICS_PATH.substr(strlen("sqlite:"));
     }
     else {
-      std::cerr<<"Only sqlite as backend supported for now."<<std::endl;
+      std::cerr<<"Fatal error: Only sqlite as backend supported for now."<<std::endl;
       std::exit(-1);
     }
     std::string filename = FILEPATH;
