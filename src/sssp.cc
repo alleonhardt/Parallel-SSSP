@@ -16,6 +16,12 @@ inline bool ends_with(std::string const & value, std::string const & ending)
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
+inline bool starts_with(std::string const & value, std::string const & beginning)
+{
+    if (beginning.size() > value.size()) return false;
+    return std::equal(beginning.begin(), beginning.end(), value.begin());
+}
+
 
 void SSSP::degree_sampling(size_t sz) {
   static uint32_t seed = 353442899;
@@ -381,7 +387,7 @@ int main(int argc, char *argv[]) {
   bool weighted = false;
   bool symmetrized = false;
   bool verify = false;
-  const char *METRICS_PATH = nullptr;
+  std::string METRICS_PATH;
   int NUM_SOURCES = 1000;
   int NUM_ROUNDS = 10;
 
@@ -444,7 +450,14 @@ int main(int argc, char *argv[]) {
   }
 
   SSSPMetrics *metrics_ptr = nullptr;
-  if(METRICS_PATH) {
+  if(METRICS_PATH != "") {
+    if(starts_with(METRICS_PATH, "sqlite:")) {
+      METRICS_PATH = METRICS_PATH.substr(strlen("sqlite:"));
+    }
+    else {
+      std::cerr<<"Only sqlite as backend supported for now."<<std::endl;
+      std::exit(-1);
+    }
     std::string filename = FILEPATH;
     if(ends_with(filename, ".adj")) {
       std::ifstream inputGraph(filename);
