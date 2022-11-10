@@ -1,4 +1,5 @@
 #include "postgres_backend.hpp"
+#include <openssl/sha.h>
 
 void PostgresBackend::dump(SSSPMetrics *metrics, unsigned long long sourceNode) {
     auto lck = std::unique_lock<std::mutex>(_access_guard);
@@ -87,11 +88,23 @@ PostgresBackend::PostgresBackend(std::string user, std::string password, std::st
     }
     PQclear(res);
 
-    const char *statement = "SELECT id FROM Graph WHERE adj_description=$1;";
+    unsigned char hash[SHA_DIGEST_LENGTH];
+
+    SHA1((const unsigned char*)graphAdj.c_str(), graphAdj.length(), hash);
+
+    char buf[SHA_DIGEST_LENGTH*2+1];
+    for (int i=0; i<SHA_DIGEST_LENGTH; i++) {
+        sprintf(buf+i*2, "%02x", hash[i]);
+    }
+    buf[SHA_DIGEST_LENGTH*2]=0;
+
+
+    const char *statement = "SELECT id FROM Graph WHERE hash_digest=$1;";
     const char *paramValues[1];
-    paramValues[0] = graphAdj.c_str();
+    paramValues[0] = buf;
     res = PQexecParams(_database, statement, 1, NULL, paramValues, 
         NULL, NULL, 0);
+
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         exit_err("Could not read graph",res);
     }
