@@ -1,7 +1,11 @@
+#ifndef __METRICS_HPP__
+#define __METRICS_HPP__
+
 #include <mutex>
 #include <set>
 #include <vector>
-#include <sqlite3.h>
+
+class BackendInterface;
 
 /*
 This class logs advanced metrics from the execution of the SSSP algorithm. Since it is written to be correct but not fast, it will slow down
@@ -16,26 +20,16 @@ class SSSPMetrics {
         // Protect functions which mutate the state from race conditions
         std::mutex _access_guard;
 
-        // Log the results to this file
-        std::string _dump_filename;
-
-        // The database to store the records
-        sqlite3 *_database;
-
-        // The graphId in the sqlite database
-        int _sqliteGraphId;
-
         // The current step in the algorithm
         int _currentStep;
 
-        std::string _algorithm;
-        int _algorithmParameter;
+        BackendInterface *_backend;
 
         // Log the data for every distinct round
         void dump(unsigned long long sourceNode);
     
     public:
-        SSSPMetrics(std::string filename, std::string graphAdj, std::string algorithm, int parameter);
+        SSSPMetrics(BackendInterface *interface);
         void log_node_add(unsigned long long nodeId);
 
         // Used to reset the Metrics after each round
@@ -49,6 +43,8 @@ class SSSPMetrics {
 
         // Use RAII
         ~SSSPMetrics();
-    
-        friend int read_graph(void *data, int argc, char **argv, char **azColName);
+
+        std::vector<std::set<unsigned long long>> &getRoundMetrics();
 };
+
+#endif

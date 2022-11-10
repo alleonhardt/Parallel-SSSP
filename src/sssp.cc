@@ -4,6 +4,7 @@
 #include <numeric>
 
 #include "dijkstra.hpp"
+#include "backend/sqlite3_backend.hpp"
 
 using namespace std;
 using namespace pbbs;
@@ -463,7 +464,8 @@ int main(int argc, char *argv[]) {
       std::ifstream inputGraph(filename);
       std::stringstream buffer;
       buffer << inputGraph.rdbuf();
-      metrics_ptr = new SSSPMetrics(METRICS_PATH, buffer.str(), ALGORITHM, param);
+      BackendInterface *backend = new Sqlite3Backend(METRICS_PATH, buffer.str(), ALGORITHM, param);
+      metrics_ptr = new SSSPMetrics(backend);
     }
     else {
       std::cerr<<"Only adj files are supported for now. Aborting..."<<std::endl;
