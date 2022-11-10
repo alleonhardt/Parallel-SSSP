@@ -106,7 +106,6 @@ PostgresBackend::PostgresBackend(std::string user, std::string password, std::st
     }
     else {
         _postgresGraphId = PQgetvalue(res, 0, 0);
-        printf("Got graph id %s\n",_postgresGraphId.c_str());
     }
     PQclear(res);
 }
