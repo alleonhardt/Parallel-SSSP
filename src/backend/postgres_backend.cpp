@@ -57,9 +57,6 @@ void PostgresBackend::exit_err(const char *step, PGresult *result) {
 }
 
 PostgresBackend::PostgresBackend(std::string user, std::string password, std::string host, int port, std::string datbase, std::string graphAdj, std::string algorithm, int parameter) : _algorithm(algorithm), _algorithmParameter(parameter) {
-    int lib_ver = PQlibVersion();
-
-    printf("Version of postgres library: %d\n", lib_ver);
     _database = nullptr;
 
     std::string login = "user="+user+" password="+password+" host="+host+" port="+std::to_string(port)+" dbname="+datbase;
