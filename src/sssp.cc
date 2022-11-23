@@ -431,7 +431,6 @@ void SSSP::sssp(int s, EdgeTy *_dist)
   {
     relax(sz);
     sz = pack();
-    metrics->getCurrentTotalCount();
     if (sz >= G.n / sd_scale)
     {
       sparse = false;
