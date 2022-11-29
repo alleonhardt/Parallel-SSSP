@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cilk/cilk.h>
 #include <cilk/cilk_api.h>
+#include <openssl/sha.h>
+
 
 int read_graph(void *, int argc, char **argv, char **azColName)
 {
@@ -62,28 +64,41 @@ Sqlite3Backend::Sqlite3Backend(std::string filename, std::string graphAdj, std::
         sqlite3_free(errorMsg);
     }
 
-    std::string findGraph = "SELECT id FROM Graph WHERE adj_description=?;";
+    unsigned char hash[SHA_DIGEST_LENGTH];
+
+    SHA1((const unsigned char*)graphAdj.c_str(), graphAdj.length(), hash);
+
+    char buf[SHA_DIGEST_LENGTH*2+1];
+    for (int i=0; i<SHA_DIGEST_LENGTH; i++) {
+        sprintf(buf+i*2, "%02x", hash[i]);
+    }
+    buf[SHA_DIGEST_LENGTH*2]=0;
+
+
+    std::string statement = "SELECT id FROM Graph WHERE hash_digest=?;";
     sqlite3_stmt *find_graph_stmt = nullptr;
     result = sqlite3_prepare_v2(
         _database,          // the handle to your (opened and ready) database
-        findGraph.c_str(),  // the sql statement, utf-8 encoded
-        findGraph.length(), // max length of sql statement
+        statement.c_str(),  // the sql statement, utf-8 encoded
+        statement.length(), // max length of sql statement
         &find_graph_stmt,   // this is an "out" parameter, the compiled statement goes here
         nullptr);           // pointer to the tail end of sql statement (when there are
     result = sqlite3_bind_text(
         find_graph_stmt,   // previously compiled prepared statement object
         1,                 // parameter index, 1-based
-        graphAdj.c_str(),  // the data
-        graphAdj.length(), // length of data
+        buf,  // the data
+        SHA_DIGEST_LENGTH*2, // length of data
         SQLITE_STATIC);    // this parameter is a little tricky - it's a pointer to the callback
 
     auto stepResult = sqlite3_step(find_graph_stmt);
     if (stepResult == SQLITE_ROW)
     {
-        _sqliteGraphId = sqlite3_column_int(find_graph_stmt, 1);
+        _sqliteGraphId = sqlite3_column_int(find_graph_stmt, 0);
     }
     else
     {
+        std::cerr<<"Could not find graph!"<<std::endl;
+        std::exit(-1);
         // Graph does not exist yet, therefore insert it
         if (_sqliteGraphId == -1)
         {
