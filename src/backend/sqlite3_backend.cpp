@@ -5,20 +5,6 @@
 #include <openssl/sha.h>
 
 
-int read_graph(void *, int argc, char **argv, char **azColName)
-{
-    /*SSSPMetrics *mets = (SSSPMetrics*)data;
-    mets->_sqliteGraphId = argv[0]? std::stoi(argv[0]): -1;
-   return 0;*/
-    int i;
-    for (i = 0; i < argc; i++)
-    {
-        printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-    }
-    printf("\n");
-    return 0;
-}
-
 int dummy_reader(void *, int, char **, char **)
 {
     return 0;
@@ -37,18 +23,10 @@ Sqlite3Backend::Sqlite3Backend(std::string filename, std::string graphAdj, std::
     }
 
     printf("Metrics database %s is opened\n", filename.c_str());
-    const char *create_graph_table_sql = "CREATE TABLE IF NOT EXISTS Graph (id INTEGER PRIMARY KEY AUTOINCREMENT, adj_description TEXT UNIQUE, graph_generator_config_json TEXT, graph_generator_name TEXT, experiment_name TEXT, num_nodes INTEGER, num_edges INTEGER);";
     const char *create_sssp_source_sql = "CREATE TABLE IF NOT EXISTS SSSPExecution (id INTEGER PRIMARY KEY AUTOINCREMENT, graph_id INTEGER, algorithm TEXT, algorithmParameter INTEGER, source_node INTEGER, processors INTEGER, FOREIGN KEY(graph_id) REFERENCES Graph(id));";
     const char *create_sssp_source_step_sql = "CREATE TABLE IF NOT EXISTS SSSPExecutionStep (sssp_source_id INTEGER, total_vertices INTEGER, step INTEGER, FOREIGN KEY(sssp_source_id) REFERENCES SSSPExecution(id));";
 
     char *errorMsg = 0;
-    result = sqlite3_exec(_database, create_graph_table_sql, dummy_reader, 0, &errorMsg);
-    if (result != SQLITE_OK)
-    {
-        std::cerr << "SQL error: " << errorMsg << std::endl;
-        sqlite3_free(errorMsg);
-        std::exit(-1);
-    }
 
     result = sqlite3_exec(_database, create_sssp_source_sql, dummy_reader, 0, &errorMsg);
     if (result != SQLITE_OK)
@@ -99,20 +77,6 @@ Sqlite3Backend::Sqlite3Backend(std::string filename, std::string graphAdj, std::
     {
         std::cerr<<"Could not find graph!"<<std::endl;
         std::exit(-1);
-        // Graph does not exist yet, therefore insert it
-        if (_sqliteGraphId == -1)
-        {
-            // TODO: Change this to prepared statement
-            std::string insertGraph = "INSERT INTO Graph (adj_description) VALUES (\"" + graphAdj + "\");";
-            result = sqlite3_exec(_database, insertGraph.c_str(), read_graph, this, &errorMsg);
-            if (result != SQLITE_OK)
-            {
-                std::cerr << "SQL error: " << errorMsg << std::endl;
-                sqlite3_free(errorMsg);
-                std::exit(-1);
-            }
-            _sqliteGraphId = sqlite3_last_insert_rowid(_database);
-        }
     }
     sqlite3_finalize(find_graph_stmt);
 }

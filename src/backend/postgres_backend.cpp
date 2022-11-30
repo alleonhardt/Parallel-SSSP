@@ -1,10 +1,12 @@
 #include "postgres_backend.hpp"
 #include <openssl/sha.h>
+#include <cilk/cilk.h>
+#include <cilk/cilk_api.h>
 
 void PostgresBackend::dump(SSSPMetrics *metrics, unsigned long long sourceNode) {
     auto lck = std::unique_lock<std::mutex>(_access_guard);
 
-    std::string insertSSSP = std::string("INSERT INTO SSSPExecution (graph_id,source_node, algorithm, algorithmParameter) VALUES (") + _postgresGraphId + "," + std::to_string(sourceNode) + ",'" + _algorithm + "'," + std::to_string(_algorithmParameter) + ") RETURNING id;";
+    std::string insertSSSP = std::string("INSERT INTO SSSPExecution (graph_id,source_node, algorithm, algorithmParameter,processors) VALUES (") + _postgresGraphId + "," + std::to_string(sourceNode) + ",'" + _algorithm + "'," + std::to_string(_algorithmParameter) + ","+std::to_string(__cilkrts_get_nworkers())+  ") RETURNING id;";
 
     PGresult *res = PQexec(_database, insertSSSP.c_str());
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -65,18 +67,10 @@ PostgresBackend::PostgresBackend(std::string user, std::string password, std::st
     if (PQstatus(_database) == CONNECTION_BAD) {
         exit_err("Connection to database failed",nullptr);
     }
-    const char *create_graph_table_sql = "CREATE TABLE IF NOT EXISTS Graph (id SERIAL PRIMARY KEY, adj_description TEXT, graph_generator_config_json TEXT, graph_generator_name TEXT, experiment_name TEXT, num_nodes INTEGER, num_edges INTEGER, FOREIGN KEY(experiment_name) REFERENCES Experiment(name));";
-    const char *create_sssp_source_sql = "CREATE TABLE IF NOT EXISTS SSSPExecution (id SERIAL PRIMARY KEY, graph_id INTEGER, algorithm TEXT, algorithmParameter INTEGER, source_node INTEGER, FOREIGN KEY(graph_id) REFERENCES Graph(id));";
+    const char *create_sssp_source_sql = "CREATE TABLE IF NOT EXISTS SSSPExecution (id SERIAL PRIMARY KEY, graph_id INTEGER, algorithm TEXT, algorithmParameter INTEGER, source_node INTEGER, processors INTEGER, FOREIGN KEY(graph_id) REFERENCES Graph(id));";
     const char *create_sssp_source_step_sql = "CREATE TABLE IF NOT EXISTS SSSPExecutionStep (sssp_source_id INTEGER, total_vertices INTEGER, step INTEGER, FOREIGN KEY(sssp_source_id) REFERENCES SSSPExecution(id));";
 
-
-    PGresult *res = PQexec(_database, create_graph_table_sql);
-    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        exit_err("Connection to database failed",res);
-    }
-    PQclear(res);
-
-    res = PQexec(_database, create_sssp_source_sql);
+    PGresult *res = PQexec(_database, create_sssp_source_sql);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         exit_err("Connection to database failed",res);
     }
