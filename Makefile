@@ -1,4 +1,4 @@
-CXXFLAGS = -O3 -mcx16 -march=native -std=c++17 -Wall -Wextra -fopencilk -DCILK -lsqlite3 -I/usr/include/postgresql -lpq -lssl -lcrypto
+CXXFLAGS = -O3 -mcx16 -std=c++17 -Wall -Wextra -fopencilk -DCILK -lsqlite3 -I/usr/include/postgresql -lpq -lssl -lcrypto
 
 all: sssp
 .PHONY: gen run clean
