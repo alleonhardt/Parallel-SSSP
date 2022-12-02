@@ -64,7 +64,11 @@ class SSSP {
   }
   void sssp(int s, EdgeTy *dist);
   void reset_timer();
-  void set_sd_scale(int x) { sd_scale = x; }
+  void set_sd_scale(int x) { 
+    if(x>0) {
+      sd_scale = x;
+    } 
+  }
   timer t_all;
   SSSPMetrics *metrics;
 };
