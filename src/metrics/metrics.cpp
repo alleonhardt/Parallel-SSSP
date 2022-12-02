@@ -32,6 +32,7 @@ void SSSPMetrics::log_node_add(unsigned long long nodeId)
 {
     auto lck = std::unique_lock<std::mutex>(_access_guard);
     _insertions_by_id.back().insert(nodeId);
+    _insertions_per_node[nodeId]+=1;
 }
 
 void SSSPMetrics::reset_round(unsigned long long sourceNode)
@@ -45,6 +46,7 @@ void SSSPMetrics::reset_round()
     auto lck = std::unique_lock<std::mutex>(_access_guard);
     _insertions_by_id.clear();
     _insertions_by_id.push_back({});
+    _insertions_per_node.clear();
     _currentStep = 0;
 }
 
@@ -55,4 +57,8 @@ void SSSPMetrics::dump(unsigned long long sourceNode)
 
 std::vector<std::set<unsigned long long>> &SSSPMetrics::getRoundMetrics() {
     return _insertions_by_id;
+}
+
+std::map<unsigned long long, unsigned long> &SSSPMetrics::getInsertionsPerNode() {
+    return _insertions_per_node;
 }

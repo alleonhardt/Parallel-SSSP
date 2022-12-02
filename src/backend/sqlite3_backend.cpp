@@ -23,7 +23,7 @@ Sqlite3Backend::Sqlite3Backend(std::string filename, std::string graphAdj, std::
     }
 
     printf("Metrics database %s is opened\n", filename.c_str());
-    const char *create_sssp_source_sql = "CREATE TABLE IF NOT EXISTS SSSPExecution (id INTEGER PRIMARY KEY AUTOINCREMENT, graph_id INTEGER, algorithm TEXT, algorithmParameter INTEGER, source_node INTEGER, processors INTEGER, FOREIGN KEY(graph_id) REFERENCES Graph(id));";
+    const char *create_sssp_source_sql = "CREATE TABLE IF NOT EXISTS SSSPExecution (id INTEGER PRIMARY KEY AUTOINCREMENT, graph_id INTEGER, algorithm TEXT, algorithmParameter INTEGER, source_node INTEGER, processors INTEGER, reinserts INTEGER, FOREIGN KEY(graph_id) REFERENCES Graph(id));";
     const char *create_sssp_source_step_sql = "CREATE TABLE IF NOT EXISTS SSSPExecutionStep (sssp_source_id INTEGER, total_vertices INTEGER, step INTEGER, FOREIGN KEY(sssp_source_id) REFERENCES SSSPExecution(id));";
 
     char *errorMsg = 0;
@@ -94,7 +94,11 @@ void Sqlite3Backend::dump(SSSPMetrics *metrics, unsigned long long sourceNode) {
     }
     std::string insertPoint = "INSERT INTO SSSPExecutionStep (sssp_source_id,total_vertices,step) VALUES (?,?,?)";
     int step = 0;
-    std::string insertSSSP = "INSERT INTO SSSPExecution (graph_id,source_node, algorithm, algorithmParameter,processors) VALUES (" + std::to_string(_sqliteGraphId) + "," + std::to_string(sourceNode) + ",\"" + _algorithm + "\"," + std::to_string(_algorithmParameter) + ","+std::to_string(__cilkrts_get_nworkers())+ ");";
+    unsigned long reinserts = 0;
+    for(auto &entry : metrics->getInsertionsPerNode()) {
+        reinserts+=entry.second-1;
+    }
+    std::string insertSSSP = "INSERT INTO SSSPExecution (graph_id,source_node, algorithm, algorithmParameter,processors,reinserts) VALUES (" + std::to_string(_sqliteGraphId) + "," + std::to_string(sourceNode) + ",\"" + _algorithm + "\"," + std::to_string(_algorithmParameter) + ","+std::to_string(__cilkrts_get_nworkers())+ ","+std::to_string(reinserts)+");";
 
     long long id = -1;
     result = sqlite3_exec(_database, insertSSSP.c_str(), dummy_reader, &id, &errorMsg);

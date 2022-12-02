@@ -4,6 +4,7 @@
 #include <mutex>
 #include <set>
 #include <vector>
+#include <map>
 
 class BackendInterface;
 
@@ -16,6 +17,7 @@ class SSSPMetrics {
         // long long to enable graphs with more than 2^32-1 nodes
         // Use vector to record multiple rounds at once
         std::vector<std::set<unsigned long long>> _insertions_by_id;
+        std::map<unsigned long long, unsigned long> _insertions_per_node;
         
         // Protect functions which mutate the state from race conditions
         std::mutex _access_guard;
@@ -45,6 +47,7 @@ class SSSPMetrics {
         ~SSSPMetrics();
 
         std::vector<std::set<unsigned long long>> &getRoundMetrics();
+        std::map<unsigned long long, unsigned long> &getInsertionsPerNode();
 };
 
 #endif

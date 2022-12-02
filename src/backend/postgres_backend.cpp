@@ -6,7 +6,11 @@
 void PostgresBackend::dump(SSSPMetrics *metrics, unsigned long long sourceNode) {
     auto lck = std::unique_lock<std::mutex>(_access_guard);
 
-    std::string insertSSSP = std::string("INSERT INTO SSSPExecution (graph_id,source_node, algorithm, algorithmParameter,processors) VALUES (") + _postgresGraphId + "," + std::to_string(sourceNode) + ",'" + _algorithm + "'," + std::to_string(_algorithmParameter) + ","+std::to_string(__cilkrts_get_nworkers())+  ") RETURNING id;";
+    unsigned long reinserts = 0;
+    for(auto &entry : metrics->getInsertionsPerNode()) {
+        reinserts+=entry.second-1;
+    }
+    std::string insertSSSP = "INSERT INTO SSSPExecution (graph_id,source_node, algorithm, algorithmParameter,processors,reinserts) VALUES (" + _postgresGraphId + "," + std::to_string(sourceNode) + ",'" + _algorithm + "'," + std::to_string(_algorithmParameter) + ","+std::to_string(__cilkrts_get_nworkers())+ ","+std::to_string(reinserts)+") RETURNING id;";
 
     PGresult *res = PQexec(_database, insertSSSP.c_str());
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -67,7 +71,7 @@ PostgresBackend::PostgresBackend(std::string user, std::string password, std::st
     if (PQstatus(_database) == CONNECTION_BAD) {
         exit_err("Connection to database failed",nullptr);
     }
-    const char *create_sssp_source_sql = "CREATE TABLE IF NOT EXISTS SSSPExecution (id SERIAL PRIMARY KEY, graph_id INTEGER, algorithm TEXT, algorithmParameter INTEGER, source_node INTEGER, processors INTEGER, FOREIGN KEY(graph_id) REFERENCES Graph(id));";
+    const char *create_sssp_source_sql = "CREATE TABLE IF NOT EXISTS SSSPExecution (id SERIAL PRIMARY KEY, graph_id INTEGER, algorithm TEXT, algorithmParameter INTEGER, source_node INTEGER, processors INTEGER,reinserts INTEGER, FOREIGN KEY(graph_id) REFERENCES Graph(id));";
     const char *create_sssp_source_step_sql = "CREATE TABLE IF NOT EXISTS SSSPExecutionStep (sssp_source_id INTEGER, total_vertices INTEGER, step INTEGER, FOREIGN KEY(sssp_source_id) REFERENCES SSSPExecution(id));";
 
     PGresult *res = PQexec(_database, create_sssp_source_sql);
