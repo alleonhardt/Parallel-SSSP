@@ -65,6 +65,9 @@ size_t SSSP::dense_sampling()
       i++;
     }
     if(num_sample>=G.n) {
+      for(unsigned int k = i; k < SSSP_SAMPLES; k++) {
+        sample_dist[k] = UINT_MAX;
+      }
       return 1.0 * i / G.n * G.n;
     }
     seed++;
