@@ -54,7 +54,7 @@ void SSSP::sparse_sampling(size_t sz)
 size_t SSSP::dense_sampling()
 {
   static uint32_t seed = 10086;
-  int num_sample = 0;
+  uint64_t num_sample = 0;
   for (size_t i = 0; i < SSSP_SAMPLES;)
   {
     num_sample++;
@@ -63,6 +63,9 @@ size_t SSSP::dense_sampling()
     {
       sample_dist[i] = info[u].dist;
       i++;
+    }
+    if(num_sample>=G.n) {
+      return 1.0 * i / G.n * G.n;
     }
     seed++;
   }
@@ -361,6 +364,8 @@ int SSSP::pack()
     }
     else
     {
+
+
       parallel_for(0, que_size, [&](size_t i)
                    {
         if (que[nxt][i] != UINT_MAX) {
