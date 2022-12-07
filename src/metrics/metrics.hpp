@@ -18,6 +18,7 @@ class SSSPMetrics {
         // Use vector to record multiple rounds at once
         std::vector<std::set<unsigned long long>> _insertions_by_id;
         std::map<unsigned long long, unsigned long> _insertions_per_node;
+        std::map<unsigned long long, unsigned long> _edge_relaxations_per_node;
         
         // Protect functions which mutate the state from race conditions
         std::mutex _access_guard;
@@ -33,6 +34,7 @@ class SSSPMetrics {
     public:
         SSSPMetrics(BackendInterface *interface);
         void log_node_add(unsigned long long nodeId);
+        void log_node_relax(unsigned long long nodeId, unsigned long neighborhood_size);
 
         // Used to reset the Metrics after each round
         void reset_round(unsigned long long sourceNode);
@@ -48,6 +50,7 @@ class SSSPMetrics {
 
         std::vector<std::set<unsigned long long>> &getRoundMetrics();
         std::map<unsigned long long, unsigned long> &getInsertionsPerNode();
+        std::map<unsigned long long, unsigned long> &getEdgeRelaxationsPerNode();
 };
 
 #endif

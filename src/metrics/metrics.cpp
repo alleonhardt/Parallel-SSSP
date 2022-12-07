@@ -35,6 +35,12 @@ void SSSPMetrics::log_node_add(unsigned long long nodeId)
     _insertions_per_node[nodeId]+=1;
 }
 
+void SSSPMetrics::log_node_relax(unsigned long long nodeId, unsigned long neighborhood_size) {
+    auto lck = std::unique_lock<std::mutex>(_access_guard);
+    _edge_relaxations_per_node[nodeId]+=neighborhood_size;
+}
+
+
 void SSSPMetrics::reset_round(unsigned long long sourceNode)
 {
     dump(sourceNode);
@@ -47,6 +53,7 @@ void SSSPMetrics::reset_round()
     _insertions_by_id.clear();
     _insertions_by_id.push_back({});
     _insertions_per_node.clear();
+    _edge_relaxations_per_node.clear();
     _currentStep = 0;
 }
 
@@ -61,4 +68,8 @@ std::vector<std::set<unsigned long long>> &SSSPMetrics::getRoundMetrics() {
 
 std::map<unsigned long long, unsigned long> &SSSPMetrics::getInsertionsPerNode() {
     return _insertions_per_node;
+}
+
+std::map<unsigned long long, unsigned long> &SSSPMetrics::getEdgeRelaxationsPerNode() {
+    return _edge_relaxations_per_node;
 }

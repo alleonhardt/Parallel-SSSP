@@ -154,6 +154,7 @@ void SSSP::relax(size_t sz)
           add(u);
         }
       }
+      metrics->log_node_relax(u,_e-_s);
       for (EdgeId es = _s; es < _e; es++)
       {
         NodeId v = G.edge[es].v;
