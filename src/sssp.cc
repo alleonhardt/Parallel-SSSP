@@ -54,7 +54,7 @@ void SSSP::sparse_sampling(size_t sz)
 size_t SSSP::dense_sampling()
 {
 	static uint32_t seed = 10086;
-  int num_sample = 0;
+  uint64_t num_sample = 0;
   for (size_t i = 0; i < SSSP_SAMPLES;) {
     num_sample++;
     NodeId u = hash32(seed) % G.n;
@@ -166,12 +166,7 @@ void SSSP::relax(size_t sz)
       }
     };
     degree_sampling(sz);
-    size_t sum_deg = 0;
-    for (size_t i = 0; i < SSSP_SAMPLES; i++)
-    {
-      sum_deg += sample_deg[i];
-    }
-    size_t avg_deg = sum_deg / SSSP_SAMPLES;
+ 
     bool super_sparse = false;
     EdgeTy th;
     if (algo == rho_stepping)
@@ -269,9 +264,10 @@ void SSSP::relax(size_t sz)
                       [](EdgeTy w1, EdgeTy w2)
                       { return w1 < w2; }))
         {
-          if (!(info[u].fl & in_que))
-          {
-            info[u].fl |= in_que;
+      		if ((info[u].fl & in_que) ||
+          	!atomic_compare_and_swap(&info[u].fl, info[u].fl,
+                                   info[u].fl | in_que))
+      		{
 						if(metrics) {
 							metrics->log_node_add(u);
 						}
@@ -286,9 +282,10 @@ void SSSP::relax(size_t sz)
                       [](EdgeTy w1, EdgeTy w2)
                       { return w1 < w2; }))
         {
-          if (!(info[v].fl & in_que))
-          {
-            info[v].fl |= in_que;
+					if ((info[v].fl & in_que) ||
+          	!atomic_compare_and_swap(&info[v].fl, info[v].fl,
+                                   info[v].fl | in_que))
+      		{
 						if(metrics) {
 							metrics->log_node_add(v);
 						}
