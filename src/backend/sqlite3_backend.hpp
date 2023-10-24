@@ -9,7 +9,7 @@ class Sqlite3Backend : public BackendInterface {
     public:
         void dump(SSSPMetrics *metrics, unsigned long long sourceNode) final;
 
-        Sqlite3Backend(std::string filename, std::string graphAdj, std::string algorithm, int parameter);
+        Sqlite3Backend(std::string filename, std::string graphAdj, std::string algorithm, int parameter, std::string regime);
         ~Sqlite3Backend();
 
     private:
@@ -23,6 +23,7 @@ class Sqlite3Backend : public BackendInterface {
         int _sqliteGraphId;
 
         std::string _algorithm;
+				std::string _regime;
         int _algorithmParameter;
 };
 

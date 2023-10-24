@@ -11,7 +11,7 @@ int dummy_reader(void *, int, char **, char **)
     return 0;
 }
 
-Sqlite3Backend::Sqlite3Backend(std::string filename, std::string graphAdj, std::string algorithm, int parameter) : _algorithm(algorithm), _algorithmParameter(parameter) {
+Sqlite3Backend::Sqlite3Backend(std::string filename, std::string graphAdj, std::string algorithm, int parameter, std::string regime) : _algorithm(algorithm),_regime(regime), _algorithmParameter(parameter) {
      _sqliteGraphId = -1;
 
     // Initialize the database
@@ -29,6 +29,7 @@ Sqlite3Backend::Sqlite3Backend(std::string filename, std::string graphAdj, std::
                                             "graph_id INTEGER,"
                                             "algorithm TEXT,"
                                             "algorithmParameter INTEGER,"
+                                            "regime TEXT,"
                                             "source_node INTEGER,"
                                             "processors INTEGER,"
                                             "reinserts_total INTEGER,"
@@ -134,7 +135,7 @@ void Sqlite3Backend::dump(SSSPMetrics *metrics, unsigned long long sourceNode) {
     VectorStats<unsigned long> stats_relaxations(&relaxations_vec, 0);
 
 
-    std::string insertSSSP = "INSERT INTO SSSPExecution (graph_id,source_node, algorithm, algorithmParameter,processors,"
+    std::string insertSSSP = "INSERT INTO SSSPExecution (graph_id,source_node, algorithm, algorithmParameter,regime,processors,"
                                 "reinserts_total,"
                                 "reinserts_mean,"
                                 "reinserts_median,"
@@ -145,7 +146,7 @@ void Sqlite3Backend::dump(SSSPMetrics *metrics, unsigned long long sourceNode) {
                                 "edge_relaxations_median,"
                                 "edge_relaxations_quartile1,"
                                 "edge_relaxations_quartile3"
-                                ") VALUES (" + std::to_string(_sqliteGraphId) + "," + std::to_string(sourceNode) + ",\"" + _algorithm + "\"," + std::to_string(_algorithmParameter) + ","+std::to_string(__cilkrts_get_nworkers())+ ","
+                                ") VALUES (" + std::to_string(_sqliteGraphId) + "," + std::to_string(sourceNode) + ",\"" + _algorithm + "\"," + std::to_string(_algorithmParameter)+ ",\"" + _regime + "\"," +std::to_string(__cilkrts_get_nworkers())+ ","
                                     +std::to_string(stats_insert.sum())
                                     +","
                                     +std::to_string(stats_insert.mean())

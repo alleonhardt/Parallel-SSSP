@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <random>
 
 #include "../pbbslib/sequence.h"
 #include "../pbbslib/utilities.h"
@@ -59,6 +60,22 @@ class Graph {
         edge[j].w = ((hash32(i) ^ hash32(edge[j].v)) & (WEIGHT - 1)) + 1;
       }
     });
+  }
+  void exponential_generate_weight() {
+    if (weighted) {
+      fprintf(stderr, "Warning: Overwrite original weight\n");
+    } else {
+      weighted = true;
+    }
+		std::random_device rd;
+    std::mt19937 gen(rd());
+ 
+    std::exponential_distribution<> d(1);
+		for(int i = 0; i < n; i++) {
+			for (size_t j = offset[i]; j < offset[i + 1]; j++) {
+				edge[j].w = (int)(10000.0*d(gen));
+			}
+		}
   }
   void read_pbbs_format(char const* filename) {
     FILE* fp = fopen(filename, "r");

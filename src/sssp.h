@@ -14,7 +14,7 @@ constexpr uint32_t to_add = 2;
 
 constexpr int BLOCK_SIZE = 1 << 12;
 constexpr size_t MIN_QUEUE = 1 << 14;
-constexpr size_t DEG_THLD = 20;
+constexpr size_t DEG_THLD = 0;
 constexpr size_t SSSP_SAMPLES = 1000;
 constexpr size_t EXP_SAMPLES = 100;
 

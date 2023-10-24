@@ -53,25 +53,23 @@ void SSSP::sparse_sampling(size_t sz)
 
 size_t SSSP::dense_sampling()
 {
-  static uint32_t seed = 10086;
-  uint64_t num_sample = 0;
-  for (size_t i = 0; i < SSSP_SAMPLES;)
-  {
+	static uint32_t seed = 10086;
+  int num_sample = 0;
+  for (size_t i = 0; i < SSSP_SAMPLES;) {
     num_sample++;
     NodeId u = hash32(seed) % G.n;
-    if (info[u].fl & in_que)
-    {
+    if (info[u].fl & in_que) {
       sample_dist[i] = info[u].dist;
       i++;
     }
-    if(num_sample>=G.n) {
-      for(unsigned int k = i; k < SSSP_SAMPLES; k++) {
-        sample_dist[k] = UINT_MAX;
-      }
-      return 1.0 * i / G.n * G.n;
-    }
     seed++;
-  }
+		if(num_sample>=G.n) {
+			for(unsigned int k = i; k < SSSP_SAMPLES; k++) {
+				sample_dist[k] = UINT_MAX;
+			}
+			return 1.0 * i / G.n * G.n;
+		}
+	}
   sort(sample_dist, sample_dist + SSSP_SAMPLES);
   return 1.0 * SSSP_SAMPLES / num_sample * G.n;
 }
@@ -92,7 +90,7 @@ void SSSP::relax(size_t sz)
     }
 
     int pt = 1;
-    auto add = [&](NodeId u)
+    auto add = [&](NodeId u, bool nolog=false)
     {
       // This is a gate, only add the node once! At least one node wins the "race"
       if ((info[u].fl & to_add) ||
@@ -101,7 +99,7 @@ void SSSP::relax(size_t sz)
       {
         return;
       }
-      if (metrics)
+      if (metrics && !nolog)
       {
         metrics->log_node_add(u);
       }
@@ -174,7 +172,7 @@ void SSSP::relax(size_t sz)
       sum_deg += sample_deg[i];
     }
     size_t avg_deg = sum_deg / SSSP_SAMPLES;
-    bool super_sparse = (avg_deg <= DEG_THLD);
+    bool super_sparse = false;
     EdgeTy th;
     if (algo == rho_stepping)
     {
@@ -197,7 +195,7 @@ void SSSP::relax(size_t sz)
         
       que[cur][i] = UINT_MAX;
       if (info[f].dist > th) {
-        add(f);
+        add(f,true);
       } else {
         size_t _n = G.offset[f + 1] - G.offset[f];
         if (super_sparse && _n < BLOCK_SIZE) {
@@ -216,6 +214,7 @@ void SSSP::relax(size_t sz)
               continue;
             }
             if (G.symmetrized) {
+							std::exit(-1);
               EdgeTy temp_dis = info[u].dist;
               for (EdgeId es = G.offset[u]; es < G.offset[u + 1]; es++) {
                 NodeId v = G.edge[es].v;
@@ -273,7 +272,10 @@ void SSSP::relax(size_t sz)
           if (!(info[u].fl & in_que))
           {
             info[u].fl |= in_que;
-          }
+						if(metrics) {
+							metrics->log_node_add(u);
+						}
+					}
         }
       }
       for (size_t es = _s; es < _e; es++)
@@ -287,12 +289,16 @@ void SSSP::relax(size_t sz)
           if (!(info[v].fl & in_que))
           {
             info[v].fl |= in_que;
+						if(metrics) {
+							metrics->log_node_add(v);
+						}
           }
         }
       }
     };
 
     int subround = 1;
+		bool first_round = true;
     while (true)
     {
       size_t est_size = dense_sampling();
@@ -323,6 +329,9 @@ void SSSP::relax(size_t sz)
       {
         th = UINT_MAX;
       }
+			if(!first_round) {
+    		metrics->incAlgorithmStep();
+			}
       parallel_for(0, G.n, [&](size_t u)
                    {
         if (info[u].dist <= th && (info[u].fl & in_que)) {
@@ -333,6 +342,7 @@ void SSSP::relax(size_t sz)
                        relax_neighbors(u, _s, _e);
                      });
         } });
+			first_round = false;
       subround++;
     }
   }
@@ -472,7 +482,8 @@ int main(int argc, char *argv[])
         "\t-v,\tverify result\n"
         "\t-r,\tnum rounds per source vertex\n"
         "\t-n,\tnum source vertices per graph\n"
-        "\t-a,\talgorithm: [rho-stepping] [delta-stepping] [bellman-ford]\n",
+        "\t-a,\talgorithm: [rho-stepping] [delta-stepping] [bellman-ford]\n"
+				"\t-g,\tregime: additional information\n",
         argv[0]);
     exit(EXIT_FAILURE);
   }
@@ -487,7 +498,8 @@ int main(int argc, char *argv[])
   size_t param = 1 << 21;
   Algorithm algo = rho_stepping;
   const char *ALGORITHM = nullptr;
-  while ((c = getopt(argc, argv, "i:p:a:n:r:m:wsv")) != -1)
+	const char *REGIME = "unspecified";
+  while ((c = getopt(argc, argv, "i:p:g:a:n:r:m:wsv")) != -1)
   {
     switch (c)
     {
@@ -500,6 +512,9 @@ int main(int argc, char *argv[])
     case 'n':
       NUM_SOURCES = atol(optarg);
       break;
+		case 'g':
+			REGIME = optarg;
+			break;
     case 'r':
       NUM_ROUNDS = atol(optarg);
       break;
@@ -550,6 +565,7 @@ int main(int argc, char *argv[])
   {
     printf("Info: Generating edge weights\n");
     G.generate_weight();
+    //G.exponential_generate_weight();
   }
 
   SSSPMetrics *metrics_ptr = nullptr;
@@ -565,7 +581,7 @@ int main(int argc, char *argv[])
       if (starts_with(METRICS_PATH, "sqlite:"))
       {
         METRICS_PATH = METRICS_PATH.substr(strlen("sqlite:"));
-        backend = new Sqlite3Backend(METRICS_PATH, buffer.str(), ALGORITHM, param);
+        backend = new Sqlite3Backend(METRICS_PATH, buffer.str(), ALGORITHM, param, REGIME);
       }
       else if (starts_with(METRICS_PATH, "postgres:"))
       {
