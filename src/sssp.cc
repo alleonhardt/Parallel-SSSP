@@ -264,8 +264,8 @@ void SSSP::relax(size_t sz)
                       [](EdgeTy w1, EdgeTy w2)
                       { return w1 < w2; }))
         {
-      		if ((info[u].fl & in_que) ||
-          	!atomic_compare_and_swap(&info[u].fl, info[u].fl,
+      		if (!(info[u].fl & in_que) &&
+          	atomic_compare_and_swap(&info[u].fl, info[u].fl,
                                    info[u].fl | in_que))
       		{
 						if(metrics) {
@@ -282,8 +282,8 @@ void SSSP::relax(size_t sz)
                       [](EdgeTy w1, EdgeTy w2)
                       { return w1 < w2; }))
         {
-					if ((info[v].fl & in_que) ||
-          	!atomic_compare_and_swap(&info[v].fl, info[v].fl,
+					if (!(info[v].fl & in_que) &&
+          	atomic_compare_and_swap(&info[v].fl, info[v].fl,
                                    info[v].fl | in_que))
       		{
 						if(metrics) {
